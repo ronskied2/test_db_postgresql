@@ -1,0 +1,425 @@
+<html>
+
+SELECT * FROM students;
+SELECT * FROM teachers;
+SELECT * FROM courses;
+SELECT * FROM department;
+SELECT * FROM student_address;
+SELECT * FROM annex_building;
+SELECT * FROM main_building; --name student, course, teacher, buildingname, department
+
+--JOIN TABLE
+SELECT students.full_name as StudentName, students.email , courses.course_name as Course,
+          teachers.full_name as TeacherName,
+          department.department_name as department,
+          main_building.building_name as buildingname
+         FROM students
+JOIN courses on students.course_id = courses.course_id
+JOIN teachers on courses.course_id = teachers.course_id
+JOIN department on courses.department_id = department.department_id
+JOIN main_building on department.department_building_id = main_building.building_id
+
+
+
+
+--FETCH STUDENT DATA
+
+CREATE OR REPLACE FUNCTION get_student_info()
+RETURNS TABLE (
+    StudentName VARCHAR(100),
+    Course VARCHAR(100),
+    TeacherName VARCHAR(100),
+    Department VARCHAR(100),
+    BuildingName VARCHAR(100)
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT students.full_name as StudentName, courses.course_name as Course,
+          teachers.full_name as TeacherName,
+          department.department_name as Department,
+          main_building.building_name as BuildingName
+         FROM students
+JOIN courses on students.course_id = courses.course_id
+JOIN teachers on courses.course_id = teachers.course_id
+JOIN department on courses.department_id = department.department_id
+JOIN main_building on department.department_building_id = main_building.building_id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+SELECT * FROM get_student_info()
+WHERE StudentName = 'Sofia Garcia';
+
+
+
+--------------------------------------------------------------------------------------------------------------------------------------
+
+
+--POST STUDENT
+
+CREATE OR REPLACE PROCEDURE add_student(
+    p_full_name VARCHAR,
+    p_gender CHAR,
+    p_birth_date DATE,
+    p_email VARCHAR,
+    p_phone_number VARCHAR,
+    p_course VARCHAR
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_student_id INT;
+    v_course_id INT;
+    v_department_id INT;
+BEGIN
+    -- Get next student_id manually
+    SELECT COALESCE(MAX(student_id), 0) + 1 INTO v_student_id FROM students;
+
+    -- Check if email already exists
+    IF EXISTS (SELECT 1 FROM students WHERE email = p_email) THEN
+        RAISE NOTICE 'Email % already exists. Student not added.', p_email;
+        RETURN;
+    END IF;
+
+    -- Check if name already exists
+    IF EXISTS (SELECT 1 FROM students WHERE full_name = p_full_name) THEN
+        RAISE NOTICE 'Student name % already exists. Student not added.', p_full_name;
+        RETURN;
+    END IF;
+
+    -- Get course_id and department_id
+    SELECT course_id, department_id
+    INTO v_course_id, v_department_id
+    FROM courses
+    WHERE course_name = p_course;
+
+    IF v_course_id IS NULL THEN
+        RAISE NOTICE 'Course % not found. Student not added.', p_course;
+        RETURN;
+    END IF;
+
+    -- Insert new student (using generated student_id)
+    INSERT INTO students (
+        student_id, full_name, gender, birth_date,
+        email, phone_number, course, course_id, department_id
+    )
+    VALUES (
+        v_student_id, p_full_name, p_gender, p_birth_date,
+        p_email, p_phone_number, p_course, v_course_id, v_department_id
+    );
+
+    RAISE NOTICE 'Student % (ID: %) added successfully under course % (Course ID: %, Department ID: %).',
+        p_full_name, v_student_id, p_course, v_course_id, v_department_id;
+END;
+$$;
+
+
+
+CALL add_student(
+    'Jud Pio',
+    'M',
+    '1996-05-12',
+    'stesadpssssss@gmail.com',
+    '092132099098',
+    'English Literature'
+);
+
+
+
+--------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+--POST TEACHER
+
+CREATE OR REPLACE PROCEDURE add_teacher(
+    p_full_name VARCHAR,
+    p_gender CHAR,
+    p_email VARCHAR,
+    p_phone_number VARCHAR,
+    p_course VARCHAR
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_teacher_id INT;
+    v_course_id INT;
+    v_department_id INT;
+    v_building_id INT;
+BEGIN
+    -- Generate next teacher_id manually
+    SELECT COALESCE(MAX(teacher_id), 0) + 1 INTO v_teacher_id FROM teachers;
+
+    -- Check if email already exists
+    IF EXISTS (SELECT 1 FROM teachers WHERE email = p_email) THEN
+        RAISE NOTICE 'Email % already exists. Teacher not added.', p_email;
+        RETURN;
+    END IF;
+
+    -- Check if name already exists
+    IF EXISTS (SELECT 1 FROM teachers WHERE full_name = p_full_name) THEN
+        RAISE NOTICE 'Teacher name % already exists. Teacher not added.', p_full_name;
+        RETURN;
+    END IF;
+
+    -- Get course_id and department_id from courses
+    SELECT course_id, department_id
+    INTO v_course_id, v_department_id
+    FROM courses
+    WHERE course_name = p_course;
+
+    -- If no course found
+    IF v_course_id IS NULL THEN
+        RAISE NOTICE 'Course % not found. Teacher not added.', p_course;
+        RETURN;
+    END IF;
+
+    -- Get building_id from department (note the correct column name)
+    SELECT department_building_id
+    INTO v_building_id
+    FROM department
+    WHERE department_id = v_department_id;
+
+    -- If no building found
+    IF v_building_id IS NULL THEN
+        RAISE NOTICE 'Building not found for Department ID: %. Teacher not added.', v_department_id;
+        RETURN;
+    END IF;
+
+    -- Insert new teacher (all data auto-linked)
+    INSERT INTO teachers (
+        teacher_id, full_name, gender, email, phone_number,
+        course, course_id, department_id, building_id
+    )
+    VALUES (
+        v_teacher_id, p_full_name, p_gender, p_email, p_phone_number,
+        p_course, v_course_id, v_department_id, v_building_id
+    );
+
+    -- Confirmation message
+    RAISE NOTICE 
+        'Teacher % (ID: %) added successfully under course % (Course ID: %, Department ID: %, Building ID: %).',
+        p_full_name, v_teacher_id, p_course, v_course_id, v_department_id, v_building_id;
+END;
+$$;
+
+CALL add_teacher('Balmosnd Ml', 'M', 'balmonqweqwed@school.edu', '09191234567', 'Calculus I');
+SELECT * FROM teachers
+
+
+
+--------------------------------------------------------------------------------------------------------------------------------------
+
+--POST DEPARTMENT
+
+CREATE OR REPLACE PROCEDURE add_department(
+    p_department_name VARCHAR,
+    p_head_of_department VARCHAR,
+    p_department_building_id INT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_department_id INT;
+BEGIN
+    -- Generate next department_id automatically
+    SELECT COALESCE(MAX(department_id), 0) + 1 INTO v_department_id FROM department;
+
+    -- Check if the Department Name already exists
+    IF EXISTS (SELECT 1 FROM department WHERE LOWER(department_name) = LOWER(p_department_name)) THEN
+        RAISE NOTICE 'Department name "%" already exists. Department not added.', p_department_name;
+        RETURN;
+    END IF;
+
+    -- Check if the building ID exists
+    IF NOT EXISTS (SELECT 1 FROM main_building WHERE building_id = p_department_building_id) THEN
+        RAISE NOTICE 'Building ID % does not exist. Department not added.', p_department_building_id;
+        RETURN;
+    END IF;
+
+    -- Insert the new department
+    INSERT INTO department (
+        department_id, department_name, head_of_department, department_building_id
+    )
+    VALUES (
+        v_department_id, p_department_name, p_head_of_department, p_department_building_id
+    );
+
+    RAISE NOTICE 'Department "%" (ID: %) added successfully under Building ID %.',
+        p_department_name, v_department_id, p_department_building_id;
+END;
+$$;
+
+
+
+CALL add_department('Business Administration', 'Mr. Delos Reyes', 12);
+SELECT * FROM department;
+
+
+--------------------------------------------------------------------------------------------------------------------------------------
+
+--POST COURSE
+
+CREATE OR REPLACE PROCEDURE add_course(
+    p_course_name VARCHAR,
+    p_course_code VARCHAR,
+    p_credits INT,
+    p_department_id INT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_course_id INT;
+BEGIN
+    -- Generate next course_id automatically
+    SELECT COALESCE(MAX(course_id), 0) + 1 INTO v_course_id FROM courses;
+
+    -- Check if course name already exists
+    IF EXISTS (SELECT 1 FROM courses WHERE LOWER(course_name) = LOWER(p_course_name)) THEN
+        RAISE NOTICE 'Course name "%" already exists. Course not added.', p_course_name;
+        RETURN;
+    END IF;
+
+    -- Check if course code already exists
+    IF EXISTS (SELECT 1 FROM courses WHERE LOWER(course_code) = LOWER(p_course_code)) THEN
+        RAISE NOTICE 'Course code "%" already exists. Course not added.', p_course_code;
+        RETURN;
+    END IF;
+
+    -- Insert new course if all checks pass
+    INSERT INTO courses (course_id, course_name, course_code, credits, department_id)
+    VALUES (v_course_id, p_course_name, p_course_code, p_credits, p_department_id);
+
+    RAISE NOTICE 'Course "%" (ID: %) added successfully under Department ID %.',
+        p_course_name, v_course_id, p_department_id;
+END;
+$$;
+
+CALL add_course('Capstone 1', 'Capsprog', 6, 33);
+SELECT * FROM courses
+
+--------------------------------------------------------------------------------------------------------------------------------------
+
+--POST MAIN BUILDING
+
+CREATE OR REPLACE PROCEDURE add_building(
+    p_building_name VARCHAR,
+    p_num_of_floors INT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_building_id INT;
+BEGIN
+    -- Generate the next building_id automatically
+    SELECT COALESCE(MAX(building_id), 0) + 1 INTO v_building_id FROM main_building;
+
+    -- Check if the building name already exists
+    IF EXISTS (SELECT 1 FROM main_building WHERE LOWER(building_name) = LOWER(p_building_name)) THEN
+        RAISE NOTICE 'Building name "%" already exists. Building not added.', p_building_name;
+        RETURN;
+    END IF;
+
+    -- Insert new building
+    INSERT INTO main_building (
+        building_id, building_name, num_of_floors
+    )
+    VALUES (
+        v_building_id, p_building_name, p_num_of_floors
+    );
+
+    RAISE NOTICE 'Building "%" (ID: %) added successfully with % floors.',
+        p_building_name, v_building_id, p_num_of_floors;
+END;
+$$;
+
+
+CALL add_building('Science Hall', 4);
+CALL add_building('Engineering Tower', 6);
+
+SELECT * FROM main_building
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------------------------------------------------------------------------------------------------------------------------------------
+
+
+--DELETE RECORD STUDENT, TEACHER, COURSE
+
+CREATE OR REPLACE PROCEDURE delete_action(p_id INT, p_type VARCHAR)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    --delete building
+
+    --department
+
+
+    -- Delete student
+    IF p_type = 'student' THEN
+        IF EXISTS (SELECT 1 FROM students WHERE student_id = p_id) THEN
+            DELETE FROM students WHERE student_id = p_id;
+            RAISE NOTICE 'Student with ID % deleted successfully.', p_id;
+        ELSE
+            RAISE NOTICE 'Student with ID % does not exist.', p_id;
+        END IF;
+
+    -- Delete teacher
+    ELSIF p_type = 'teacher' THEN
+        IF EXISTS (SELECT 1 FROM teachers WHERE teacher_id = p_id) THEN
+            DELETE FROM teachers WHERE teacher_id = p_id;
+            RAISE NOTICE 'Teacher with ID % deleted successfully.', p_id;
+        ELSE
+            RAISE NOTICE 'Teacher with ID % does not exist.', p_id;
+        END IF;
+
+    -- Delete course
+    ELSIF p_type = 'course' THEN
+        IF EXISTS (SELECT 1 FROM courses WHERE course_id = p_id) THEN
+            DELETE FROM courses WHERE course_id = p_id;
+            RAISE NOTICE 'Course with ID % deleted successfully.', p_id;
+        ELSE
+            RAISE NOTICE 'Course with ID % does not exist.', p_id;
+        END IF;
+
+    -- Invalid type
+    ELSE
+        RAISE NOTICE 'Invalid type. Use "student", "teacher", or "course".';
+    END IF;
+END;
+$$;
+
+
+-- Delete student
+CALL delete_action(60, 'student');
+
+-- Delete teacher
+CALL delete_action(44, 'teacher');
+
+-- Delete course
+CALL delete_action(105, 'course');
+
+--------------------------------------------------------------------------------------------------------------------------------------
+
+SELECT * FROM get_student_info();
+
+SELECT * FROM students;
+SELECT * FROM teachers;
+SELECT * FROM courses;
+SELECT * FROM department;
+SELECT * FROM student_address;
+SELECT * FROM annex_building;
+
+SELECT * FROM main_building; 
+
+</html>
