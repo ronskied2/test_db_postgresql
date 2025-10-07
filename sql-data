@@ -1,0 +1,75 @@
+<script>
+-- 1. Main Building (created first since it's referenced by department)
+CREATE TABLE main_building (
+    id SERIAL PRIMARY KEY,
+    building_id INT UNIQUE,
+    building_name VARCHAR(100) NOT NULL,
+    num_of_floors INT
+);
+
+-- 2. Department (now we can safely reference main_building)
+CREATE TABLE department (
+    id SERIAL PRIMARY KEY,
+    department_id INT UNIQUE,
+    department_name VARCHAR(100) NOT NULL,
+    head_of_department VARCHAR(100),
+    department_building_id INT REFERENCES main_building(building_id)
+);
+
+-- 3. Annex Building
+CREATE TABLE annex_building (
+    id SERIAL PRIMARY KEY,
+    building_id INT UNIQUE,
+    building_name VARCHAR(100) NOT NULL,
+    main_building_id INT REFERENCES main_building(building_id)
+);
+
+-- 4. Courses
+CREATE TABLE courses (
+    id SERIAL PRIMARY KEY,
+    course_id INT UNIQUE,
+    course_name VARCHAR(100) NOT NULL,
+    course_code VARCHAR(20) UNIQUE NOT NULL,
+    credits INT CHECK (credits > 0),
+    department_id INT REFERENCES department(department_id)
+);
+
+-- 5. Teachers
+CREATE TABLE teachers (
+    id SERIAL PRIMARY KEY,
+    teacher_id INT UNIQUE,
+    full_name VARCHAR(100) NOT NULL,
+    gender CHAR(1) CHECK (gender IN ('M', 'F')),
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(15),
+    course VARCHAR(40),
+    course_id INT REFERENCES courses(course_id),
+    department_id INT REFERENCES department(department_id),
+    building_id INT
+);
+
+-- 6. Students
+CREATE TABLE students (
+    id SERIAL PRIMARY KEY,
+    student_id INT UNIQUE,
+    full_name VARCHAR(100) NOT NULL,
+    gender CHAR(1) CHECK (gender IN ('M', 'F')),
+    birth_date DATE,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(15),
+    course VARCHAR(40),
+    course_id INT REFERENCES courses(course_id),
+    department_id INT REFERENCES department(department_id)
+);
+
+-- 7. Student Address
+CREATE TABLE student_address (
+    id SERIAL PRIMARY KEY,
+    address_id INT UNIQUE,
+    student_id INT REFERENCES students(student_id) ON DELETE CASCADE,
+    street VARCHAR(100),
+    city VARCHAR(50),
+    province VARCHAR(50),
+    postal_code VARCHAR(10)
+);
+</script>
