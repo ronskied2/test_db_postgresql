@@ -1,0 +1,435 @@
+-- ===========================================
+-- ✅ FIXED: UPDATE TEACHER
+-- ===========================================
+CREATE OR REPLACE PROCEDURE update_teacher(
+    p_teacher_id INT,
+    p_full_name VARCHAR,
+    p_gender CHAR,
+    p_email VARCHAR,
+    p_phone_number VARCHAR,
+    p_course_id INT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_old RECORD;
+    v_course_name VARCHAR;
+    v_old_course_name VARCHAR;
+    v_department_id INT;
+    v_building_id INT;
+    v_change_msg TEXT := '';
+BEGIN
+    -- 1️⃣ Check if teacher exists
+    SELECT * INTO v_old FROM teachers WHERE teacher_id = p_teacher_id;
+    IF NOT FOUND THEN
+        RAISE NOTICE 'Teacher with ID % not found. Update canceled.', p_teacher_id;
+        RETURN;
+    END IF;
+
+    -- 2️⃣ Check duplicate email (ignore same teacher)
+    IF EXISTS (
+        SELECT 1 FROM teachers 
+        WHERE email = p_email 
+        AND teacher_id <> p_teacher_id
+    ) THEN
+        RAISE NOTICE 'Email % already exists for another teacher. Update canceled.', p_email;
+        RETURN;
+    END IF;
+
+    -- 3️⃣ Get new course info
+    SELECT course_name, department_id
+    INTO v_course_name, v_department_id
+    FROM courses
+    WHERE course_id = p_course_id;
+
+    IF v_course_name IS NULL THEN
+        RAISE NOTICE 'Course ID % not found. Update canceled.', p_course_id;
+        RETURN;
+    END IF;
+
+    -- 4️⃣ Get old course name for comparison
+    SELECT course_name INTO v_old_course_name
+    FROM courses WHERE course_id = v_old.course_id;
+
+    -- 5️⃣ Get building_id automatically from department
+    SELECT department_building_id
+    INTO v_building_id
+    FROM department
+    WHERE department_id = v_department_id;
+
+    IF v_building_id IS NULL THEN
+        RAISE NOTICE 'No building found for Department ID %. Update canceled.', v_department_id;
+        RETURN;
+    END IF;
+
+    -- 6️⃣ Build change message dynamically
+    IF p_full_name IS DISTINCT FROM v_old.full_name THEN
+        v_change_msg := v_change_msg || E'\n- Full Name updated from "' || v_old.full_name || '" to "' || p_full_name || '"';
+    END IF;
+
+    IF p_gender IS DISTINCT FROM v_old.gender THEN
+        v_change_msg := v_change_msg || E'\n- Gender updated from "' || v_old.gender || '" to "' || p_gender || '"';
+    END IF;
+
+    IF p_email IS DISTINCT FROM v_old.email THEN
+        v_change_msg := v_change_msg || E'\n- Email updated from "' || v_old.email || '" to "' || p_email || '"';
+    END IF;
+
+    IF p_phone_number IS DISTINCT FROM v_old.phone_number THEN
+        v_change_msg := v_change_msg || E'\n- Phone Number updated from "' || v_old.phone_number || '" to "' || p_phone_number || '"';
+    END IF;
+
+    IF p_course_id IS DISTINCT FROM v_old.course_id THEN
+        v_change_msg := v_change_msg || E'\n- Course updated from "' || v_old_course_name || '" to "' || v_course_name || '"';
+    END IF;
+
+    -- 7️⃣ If no changes
+    IF v_change_msg = '' THEN
+        RAISE NOTICE 'No changes detected for Teacher ID %.', p_teacher_id;
+        RETURN;
+    END IF;
+
+    -- 8️⃣ Perform update (no "course" column)
+    UPDATE teachers
+    SET
+        full_name = p_full_name,
+        gender = p_gender,
+        email = p_email,
+        phone_number = p_phone_number,
+        course_id = p_course_id,
+        department_id = v_department_id,
+        building_id = v_building_id
+    WHERE teacher_id = p_teacher_id;
+
+    -- 9️⃣ Show what changed
+    RAISE NOTICE 
+        'Teacher ID % updated successfully with the following changes:%', 
+        p_teacher_id, v_change_msg;
+
+END;
+$$;
+
+
+CALL update_teacher(
+    41,                          -- Teacher ID
+    'Random Mil',                -- Full Name
+    'M',                         -- Gender
+    'randommil@school.com',      -- Email
+    '09171234567',               -- Phone Number
+    102                          -- Course ID
+);
+SELECT * FROM teachers
+
+
+
+----------------------------------------------------------
+
+-- ===========================================
+-- ✅ FIXED: UPDATE STUDENT
+-- ===========================================
+CREATE OR REPLACE PROCEDURE update_student(
+    p_student_id INT,
+    p_full_name VARCHAR,
+    p_gender CHAR,
+    p_birth_date DATE,
+    p_email VARCHAR,
+    p_phone_number VARCHAR,
+    p_course_id INT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_old RECORD;
+    v_course_name VARCHAR;
+    v_old_course_name VARCHAR;
+    v_department_id INT;
+    v_change_msg TEXT := '';
+BEGIN
+    -- 1️⃣ Check if student exists
+    SELECT * INTO v_old FROM students WHERE student_id = p_student_id;
+    IF NOT FOUND THEN
+        RAISE NOTICE 'Student with ID % not found. Update canceled.', p_student_id;
+        RETURN;
+    END IF;
+
+    -- 2️⃣ Check duplicate email (ignore same student)
+    IF EXISTS (
+        SELECT 1 FROM students 
+        WHERE email = p_email 
+        AND student_id <> p_student_id
+    ) THEN
+        RAISE NOTICE 'Email % already exists for another student. Update canceled.', p_email;
+        RETURN;
+    END IF;
+
+    -- 3️⃣ Get new course info
+    SELECT course_name, department_id
+    INTO v_course_name, v_department_id
+    FROM courses
+    WHERE course_id = p_course_id;
+
+    IF v_course_name IS NULL THEN
+        RAISE NOTICE 'Course ID % not found. Update canceled.', p_course_id;
+        RETURN;
+    END IF;
+
+    -- 4️⃣ Get old course name for comparison
+    SELECT course_name INTO v_old_course_name
+    FROM courses WHERE course_id = v_old.course_id;
+
+    -- 5️⃣ Build change message dynamically
+    IF p_full_name IS DISTINCT FROM v_old.full_name THEN
+        v_change_msg := v_change_msg || E'\n- Full Name updated from "' || v_old.full_name || '" to "' || p_full_name || '"';
+    END IF;
+
+    IF p_gender IS DISTINCT FROM v_old.gender THEN
+        v_change_msg := v_change_msg || E'\n- Gender updated from "' || v_old.gender || '" to "' || p_gender || '"';
+    END IF;
+
+    IF p_birth_date IS DISTINCT FROM v_old.birth_date THEN
+        v_change_msg := v_change_msg || E'\n- Birth Date updated from "' || v_old.birth_date || '" to "' || p_birth_date || '"';
+    END IF;
+
+    IF p_email IS DISTINCT FROM v_old.email THEN
+        v_change_msg := v_change_msg || E'\n- Email updated from "' || v_old.email || '" to "' || p_email || '"';
+    END IF;
+
+    IF p_phone_number IS DISTINCT FROM v_old.phone_number THEN
+        v_change_msg := v_change_msg || E'\n- Phone Number updated from "' || v_old.phone_number || '" to "' || p_phone_number || '"';
+    END IF;
+
+    IF p_course_id IS DISTINCT FROM v_old.course_id THEN
+        v_change_msg := v_change_msg || E'\n- Course updated from "' || v_old_course_name || '" to "' || v_course_name || '"';
+    END IF;
+
+    -- 6️⃣ If no changes detected
+    IF v_change_msg = '' THEN
+        RAISE NOTICE 'No changes detected for Student ID %.', p_student_id;
+        RETURN;
+    END IF;
+
+    -- 7️⃣ Perform update (no "course" column)
+    UPDATE students
+    SET
+        full_name = p_full_name,
+        gender = p_gender,
+        birth_date = p_birth_date,
+        email = p_email,
+        phone_number = p_phone_number,
+        course_id = p_course_id,
+        department_id = v_department_id
+    WHERE student_id = p_student_id;
+
+    -- 8️⃣ Show what changed
+    RAISE NOTICE 
+        'Student ID % updated successfully with the following changes:%', 
+        p_student_id, v_change_msg;
+
+END;
+$$;
+
+CALL update_student(
+    51,                            -- Student ID
+    'Sofia Dees',                  -- Full Name
+    'F',                           -- Gender
+    '2001-06-15',                  -- Birth Date
+    'sofia_updated@gmail.com',     -- Email
+    '09991234567',                 -- Phone Number
+    101                            -- Course ID
+);
+SELECT * FROM students
+
+-------------------------------------------------------------------------------------------------------------------------------------------
+
+--UPDATE COURSE
+
+CREATE OR REPLACE PROCEDURE update_course(
+    p_course_id INT,
+    p_course_name VARCHAR,
+    p_course_code VARCHAR,
+    p_credits INT,
+    p_department_id INT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_old RECORD;
+    v_change_msg TEXT := '';
+BEGIN
+    -- 1️⃣ Check if course exists
+    SELECT * INTO v_old FROM courses WHERE course_id = p_course_id;
+    IF NOT FOUND THEN
+        RAISE NOTICE 'Course with ID % not found. Update canceled.', p_course_id;
+        RETURN;
+    END IF;
+
+    -- 2️⃣ Check for duplicate course name (ignore same course)
+    IF EXISTS (
+        SELECT 1 FROM courses 
+        WHERE LOWER(course_name) = LOWER(p_course_name)
+        AND course_id <> p_course_id
+    ) THEN
+        RAISE NOTICE 'Course name "%" already exists for another course. Update canceled.', p_course_name;
+        RETURN;
+    END IF;
+
+    -- 3️⃣ Check for duplicate course code (ignore same course)
+    IF EXISTS (
+        SELECT 1 FROM courses 
+        WHERE LOWER(course_code) = LOWER(p_course_code)
+        AND course_id <> p_course_id
+    ) THEN
+        RAISE NOTICE 'Course code "%" already exists for another course. Update canceled.', p_course_code;
+        RETURN;
+    END IF;
+
+    -- 4️⃣ Build change message dynamically
+    IF p_course_name IS DISTINCT FROM v_old.course_name THEN
+        v_change_msg := v_change_msg || E'\n- Course Name updated from "' || v_old.course_name || '" to "' || p_course_name || '"';
+    END IF;
+
+    IF p_course_code IS DISTINCT FROM v_old.course_code THEN
+        v_change_msg := v_change_msg || E'\n- Course Code updated from "' || v_old.course_code || '" to "' || p_course_code || '"';
+    END IF;
+
+    IF p_credits IS DISTINCT FROM v_old.credits THEN
+        v_change_msg := v_change_msg || E'\n- Credits updated from "' || v_old.credits || '" to "' || p_credits || '"';
+    END IF;
+
+    IF p_department_id IS DISTINCT FROM v_old.department_id THEN
+        v_change_msg := v_change_msg || E'\n- Department updated from "' || v_old.department_id || '" to "' || p_department_id || '"';
+    END IF;
+
+    -- 5️⃣ If no changes
+    IF v_change_msg = '' THEN
+        RAISE NOTICE 'No changes detected for Course ID %.', p_course_id;
+        RETURN;
+    END IF;
+
+    -- 6️⃣ Perform update
+    UPDATE courses
+    SET
+        course_name = p_course_name,
+        course_code = p_course_code,
+        credits = p_credits,
+        department_id = p_department_id
+    WHERE course_id = p_course_id;
+
+    -- 7️⃣ Show what changed
+    RAISE NOTICE 'Course ID % updated successfully with the following changes:%', p_course_id, v_change_msg;
+
+END;
+$$;
+
+CALL update_course(
+    101,                                --Course ID
+    'BS Computer Sciences',              --Course Name
+    'CS101',                            --Course Code
+    6,                                  --Course Unit/Credits
+    31                                  --Dept. ID
+);
+
+SELECT * FROM students;
+SELECT * FROM courses;
+SELECT * FROM teachers
+
+
+
+
+
+--UPDATE DEPARTMENT
+
+CREATE OR REPLACE PROCEDURE update_department(
+    p_department_id INT,
+    p_department_name VARCHAR,
+    p_head_of_department VARCHAR,
+    p_department_building_id INT 
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Check if department exists
+    IF NOT EXISTS (SELECT 1 FROM department WHERE department_id = p_department_id) THEN
+        RAISE NOTICE 'Department ID % does not exist. No update performed.', p_department_id;
+        RETURN;
+    END IF;
+
+    -- Directly update all fields
+    UPDATE department
+    SET
+        department_name = p_department_name,
+        head_of_department = p_head_of_department,
+        department_building_id = p_department_building_id
+    WHERE department_id = p_department_id;
+
+    RAISE NOTICE 'Department ID % updated successfully.', p_department_id;
+END;
+$$;
+
+
+CALL update_department(32, 'Structural Engineering', 'Engr. Mark Villanueva', 12);
+
+
+SELECT * FROM department
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+CREATE OR REPLACE PROCEDURE update_building(
+    p_building_id INT,
+    p_building_name VARCHAR,
+    p_num_of_floors INT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_old RECORD;
+    v_change_msg TEXT := '';
+BEGIN
+    -- 1️⃣ Check if building exists
+    SELECT * INTO v_old FROM main_building WHERE building_id = p_building_id;
+    IF NOT FOUND THEN
+        RAISE NOTICE 'Building with ID % not found. Update canceled.', p_building_id;
+        RETURN;
+    END IF;
+
+    -- 2️⃣ Check for duplicate building name (ignore same building)
+    IF EXISTS (
+        SELECT 1 FROM main_building
+        WHERE LOWER(building_name) = LOWER(p_building_name)
+        AND building_id <> p_building_id
+    ) THEN
+        RAISE NOTICE 'Building name "%" already exists. Update canceled.', p_building_name;
+        RETURN;
+    END IF;
+
+    -- 3️⃣ Build change message dynamically
+    IF p_building_name IS DISTINCT FROM v_old.building_name THEN
+        v_change_msg := v_change_msg || E'\n- Building Name updated from "' || v_old.building_name || '" to "' || p_building_name || '"';
+    END IF;
+
+    IF p_num_of_floors IS DISTINCT FROM v_old.num_of_floors THEN
+        v_change_msg := v_change_msg || E'\n- Number of Floors updated from "' || v_old.num_of_floors || '" to "' || p_num_of_floors || '"';
+    END IF;
+
+    -- 4️⃣ If no changes
+    IF v_change_msg = '' THEN
+        RAISE NOTICE 'No changes detected for Building ID %.', p_building_id;
+        RETURN;
+    END IF;
+
+    -- 5️⃣ Perform update
+    UPDATE main_building
+    SET
+        building_name = p_building_name,
+        num_of_floors = p_num_of_floors
+    WHERE building_id = p_building_id;
+
+    -- 6️⃣ Show what changed
+    RAISE NOTICE 'Building ID % updated successfully with the following changes:%', p_building_id, v_change_msg;
+
+END;
+$$;
+
+
+CALL update_building(12, 'Engineering Center', 5);
+SELECT * from main_building
