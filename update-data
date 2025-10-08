@@ -112,11 +112,11 @@ $$;
 
 CALL update_teacher(
     41,                          -- Teacher ID
-    'Random Mil',                -- Full Name
+    'Random MilA',                -- Full Name
     'M',                         -- Gender
     'randommil@school.com',      -- Email
     '09171234567',               -- Phone Number
-    102                          -- Course ID
+    103                          -- Course ID
 );
 SELECT * FROM teachers
 
@@ -230,12 +230,12 @@ $$;
 
 CALL update_student(
     51,                            -- Student ID
-    'Sofia Dees',                  -- Full Name
+    'Sofia December',                  -- Full Name
     'F',                           -- Gender
     '2001-06-15',                  -- Birth Date
     'sofia_updated@gmail.com',     -- Email
     '09991234567',                 -- Phone Number
-    101                            -- Course ID
+    103                            -- Course ID
 );
 SELECT * FROM students
 
