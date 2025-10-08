@@ -1,5 +1,5 @@
 -- ===========================================
--- 🏫 SCHOOL DATABASE WITH STRUCTURED IDS
+-- 🏫 SCHOOL DATABASE WITH STRUCTURED IDS (CLEAN VERSION)
 -- ===========================================
 
 -- Drop existing tables safely
@@ -55,7 +55,7 @@ CREATE TABLE courses (
 );
 
 -- ===========================================
--- 5. Teachers
+-- 5. Teachers (course name removed)
 -- ===========================================
 CREATE TABLE teachers (
     id SERIAL PRIMARY KEY,
@@ -64,14 +64,13 @@ CREATE TABLE teachers (
     gender CHAR(1) CHECK (gender IN ('M', 'F')),
     email VARCHAR(100) UNIQUE,
     phone_number VARCHAR(15),
-    course VARCHAR(40) REFERENCES courses(course_name),
     course_id INT REFERENCES courses(course_id),
     department_id INT REFERENCES department(department_id),
     building_id INT
 );
 
 -- ===========================================
--- 6. Students
+-- 6. Students (course name removed)
 -- ===========================================
 CREATE TABLE students (
     id SERIAL PRIMARY KEY,
@@ -81,7 +80,6 @@ CREATE TABLE students (
     birth_date DATE,
     email VARCHAR(100) UNIQUE,
     phone_number VARCHAR(15),
-    course VARCHAR(40),
     course_id INT REFERENCES courses(course_id),
     department_id INT REFERENCES department(department_id)
 );
@@ -127,19 +125,19 @@ INSERT INTO courses (course_id, course_name, course_code, credits, department_id
 (102, 'BS Civil Engineering', 'CE102', 4, 32),
 (103, 'BS Business Administration', 'BA103', 3, 33);
 
--- Teachers (teacher_id: 41, 42, 43)
-INSERT INTO teachers (teacher_id, full_name, gender, email, phone_number, course, course_id, department_id, building_id) VALUES
-(41, 'Prof. John Reyes', 'M', 'john.reyes@example.com', '09171234567', 'BS Computer Science', 101, 31, 11),
-(42, 'Prof. Maria Santos', 'F', 'maria.santos@example.com', '09183456789', 'BS Civil Engineering', 102, 32, 12),
-(43, 'Prof. Carlo Dela Cruz', 'M', 'carlo.delacruz@example.com', '09191231234', 'BS Business Administration', 103, 33, 13);
+-- Teachers (course name removed)
+INSERT INTO teachers (teacher_id, full_name, gender, email, phone_number, course_id, department_id, building_id) VALUES
+(41, 'Prof. John Reyes', 'M', 'john.reyes@example.com', '09171234567', 101, 31, 11),
+(42, 'Prof. Maria Santos', 'F', 'maria.santos@example.com', '09183456789', 102, 32, 12),
+(43, 'Prof. Carlo Dela Cruz', 'M', 'carlo.delacruz@example.com', '09191231234', 103, 33, 13);
 
--- Students (student_id: 51, 52, 53)
-INSERT INTO students (student_id, full_name, gender, birth_date, email, phone_number, course, course_id, department_id) VALUES
-(51, 'Ana Lopez', 'F', '2002-03-15', 'ana.lopez@example.com', '09190000001', 'BS Computer Science', 101, 31),
-(52, 'Mark Tan', 'M', '2001-09-10', 'mark.tan@example.com', '09190000002', 'BS Civil Engineering', 102, 32),
-(53, 'Ella Cruz', 'F', '2003-01-25', 'ella.cruz@example.com', '09190000003', 'BS Business Administration', 103, 33);
+-- Students (course name removed)
+INSERT INTO students (student_id, full_name, gender, birth_date, email, phone_number, course_id, department_id) VALUES
+(51, 'Ana Lopez', 'F', '2002-03-15', 'ana.lopez@example.com', '09190000001', 101, 31),
+(52, 'Mark Tan', 'M', '2001-09-10', 'mark.tan@example.com', '09190000002', 102, 32),
+(53, 'Ella Cruz', 'F', '2003-01-25', 'ella.cruz@example.com', '09190000003', 103, 33);
 
--- Student Address (address_id: 61, 62, 63)
+-- Student Address
 INSERT INTO student_address (address_id, student_id, street, city, province, postal_code) VALUES
 (61, 51, '123 Science St.', 'Quezon City', 'Metro Manila', '1101'),
 (62, 52, '456 Engineer Ave.', 'Makati', 'Metro Manila', '1200'),
